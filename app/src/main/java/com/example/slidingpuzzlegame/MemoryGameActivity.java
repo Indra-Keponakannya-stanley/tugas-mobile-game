@@ -5,6 +5,7 @@ import android.os.CountDownTimer;
 import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,16 +22,15 @@ public class MemoryGameActivity extends AppCompatActivity {
     private final long PREVIEW_TIME = 3000; // 3 detik
 
     int[] imageResIds = {
-            R.drawable.mangga, R.drawable.salak,
-            R.drawable.buah_naga, R.drawable.anggur,
-            R.drawable.nanas, R.drawable.semangka,
-            R.drawable.jeruk, R.drawable.pisang
+            R.drawable.buah1, R.drawable.buah2, R.drawable.buah3, R.drawable.buah4, R.drawable.buah5,
+            R.drawable.buah6, R.drawable.buah7, R.drawable.buah8, R.drawable.buah9, R.drawable.buah10
     };
 
     ArrayList<Integer> imageList = new ArrayList<>();
     ArrayList<ImageView> cardViews = new ArrayList<>();
     GridLayout gridLayout;
     TextView timerText;
+    ImageButton btnPause;
     int firstCardIndex = -1;
     int matchesFound = 0;
     int attempts = 0;
@@ -44,6 +44,39 @@ public class MemoryGameActivity extends AppCompatActivity {
 
         gridLayout = findViewById(R.id.gridLayout);
         timerText = findViewById(R.id.timerText);
+        btnPause = findViewById(R.id.btnPause); // ✅ WAJIB agar tidak null
+
+        btnPause.setOnClickListener(v -> {
+            if (timer != null) timer.cancel();
+
+            View popupView = getLayoutInflater().inflate(R.layout.popup_pause, null);
+            android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(MemoryGameActivity.this)
+                    .setView(popupView)
+                    .setCancelable(false)
+                    .create();
+
+            LinearLayout btnLanjut = popupView.findViewById(R.id.btnLanjut);
+            LinearLayout btnUlang = popupView.findViewById(R.id.btnUlang);
+            LinearLayout btnHome = popupView.findViewById(R.id.btnHome);
+
+            btnLanjut.setOnClickListener(view -> {
+                startTimer();
+                dialog.dismiss();
+            });
+
+            btnUlang.setOnClickListener(view -> {
+                setupGame();
+                previewCards();
+                dialog.dismiss();
+            });
+
+            btnHome.setOnClickListener(view -> {
+                dialog.dismiss();
+                finish(); // keluar dari activity
+            });
+
+            dialog.show();
+        });
 
         setupGame();
         previewCards();
@@ -205,7 +238,6 @@ public class MemoryGameActivity extends AppCompatActivity {
         Button back = new Button(this);
         back.setText("Kembali");
 
-        // Buat dialog
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
                 .setView(layout)
                 .setCancelable(false)
@@ -214,7 +246,7 @@ public class MemoryGameActivity extends AppCompatActivity {
         retry.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog.dismiss(); // Tutup dialog dulu
+                dialog.dismiss();
                 setupGame();
                 previewCards();
             }
@@ -223,8 +255,8 @@ public class MemoryGameActivity extends AppCompatActivity {
         back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog.dismiss(); // Tutup dialog
-                finish(); // kembali ke MainActivity
+                dialog.dismiss();
+                finish();
             }
         });
 

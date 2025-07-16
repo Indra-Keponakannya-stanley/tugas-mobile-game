@@ -2,32 +2,43 @@ package com.example.slidingpuzzlegame;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.DragEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.GridLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Random;
 
 public class PuzzleGameActivity extends AppCompatActivity {
 
     private GridLayout puzzleGrid;
-    private final int[] pieceDrawables = {
-            R.drawable.puzzle2_piece_0, R.drawable.puzzle2_piece_1, R.drawable.puzzle2_piece_2,
-            R.drawable.puzzle2_piece_3, R.drawable.puzzle2_piece_4, R.drawable.puzzle2_piece_5,
-            R.drawable.puzzle2_piece_6, R.drawable.puzzle2_piece_7, R.drawable.puzzle2_piece_8
-    };
+    private TextView timerText, scoreText;
+    private ImageButton btnPause;
+    private ImageView imagePreview;
+
+    private CountDownTimer timer;
+    private static final long TOTAL_TIME = 60000;
+    private int score = 0;
 
     private ArrayList<ImageView> slots = new ArrayList<>();
-    private ArrayList<Integer> shuffledPieces = new ArrayList<>();
+    private ArrayList<Bitmap> correctPieces;
+
+    private AlertDialog resultDialog;
+    private AlertDialog pauseDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,28 +46,49 @@ public class PuzzleGameActivity extends AppCompatActivity {
         setContentView(R.layout.activity_puzzle_game);
 
         puzzleGrid = findViewById(R.id.puzzleGrid);
+        timerText = findViewById(R.id.timerText);
+        scoreText = findViewById(R.id.scoreText);
+        btnPause = findViewById(R.id.btnPause);
+        imagePreview = findViewById(R.id.imagePreview); // ✅ Referensi gambar buah
 
         setupPuzzle();
+        startTimer();
+
+        btnPause.setOnClickListener(v -> pauseGame());
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private void setupPuzzle() {
-        shuffledPieces.clear();
-        Collections.addAll(shuffledPieces, pieceDrawables);
-        Collections.shuffle(shuffledPieces);
+        int[] buahImages = {
+                R.drawable.buah1, R.drawable.buah2, R.drawable.buah3, R.drawable.buah4,
+                R.drawable.buah5, R.drawable.buah6, R.drawable.buah7, R.drawable.buah8,
+                R.drawable.buah9, R.drawable.buah10
+        };
+
+        int randomImageResId = buahImages[new Random().nextInt(buahImages.length)];
+        imagePreview.setImageResource(randomImageResId); // ✅ Tampilkan gambar referensi buah
+
+        Bitmap originalBitmap = BitmapFactory.decodeResource(getResources(), randomImageResId);
+        correctPieces = new ArrayList<>();
+        for (Bitmap piece : splitImage(originalBitmap)) {
+            correctPieces.add(addWhiteBackgroundAndBorder(piece));
+        }
+
+        ArrayList<Bitmap> shuffled = new ArrayList<>(correctPieces);
+        Collections.shuffle(shuffled);
 
         puzzleGrid.removeAllViews();
         slots.clear();
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < shuffled.size(); i++) {
             ImageView slot = new ImageView(this);
-            slot.setLayoutParams(new GridLayout.LayoutParams());
-            slot.getLayoutParams().width = 300;
-            slot.getLayoutParams().height = 300;
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = 200;
+            params.height = 200;
+            slot.setLayoutParams(params);
             slot.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            slot.setBackgroundResource(android.R.color.darker_gray);
-            slot.setImageResource(shuffledPieces.get(i));
-            slot.setTag(shuffledPieces.get(i));
+            slot.setImageBitmap(shuffled.get(i));
+            slot.setTag(shuffled.get(i));
 
             slot.setOnTouchListener((v, event) -> {
                 View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
@@ -67,24 +99,30 @@ public class PuzzleGameActivity extends AppCompatActivity {
             slot.setOnDragListener((targetView, event) -> {
                 if (event.getAction() == DragEvent.ACTION_DROP) {
                     View draggedView = (View) event.getLocalState();
-                    if (draggedView != targetView && draggedView instanceof ImageView && targetView instanceof ImageView) {
+                    if (draggedView != targetView &&
+                            draggedView instanceof ImageView &&
+                            targetView instanceof ImageView) {
+
                         ImageView from = (ImageView) draggedView;
                         ImageView to = (ImageView) targetView;
 
-                        Integer fromTag = (Integer) from.getTag();
-                        Integer toTag = (Integer) to.getTag();
+                        BitmapDrawable fromDrawable = (BitmapDrawable) from.getDrawable();
+                        BitmapDrawable toDrawable = (BitmapDrawable) to.getDrawable();
 
-                        int fromImage = fromTag;
-                        int toImage = toTag;
+                        Bitmap fromBitmap = fromDrawable.getBitmap();
+                        Bitmap toBitmap = toDrawable.getBitmap();
 
-                        from.setImageResource(toImage);
-                        from.setTag(toImage);
+                        from.setImageBitmap(toBitmap);
+                        from.setTag(toBitmap);
 
-                        to.setImageResource(fromImage);
-                        to.setTag(fromImage);
+                        to.setImageBitmap(fromBitmap);
+                        to.setTag(fromBitmap);
 
                         if (checkIfSolved()) {
-                            showWinDialog(); // ⬅️ panggil dialog menang
+                            if (timer != null) timer.cancel();
+                            score++;
+                            scoreText.setText("Score: " + score);
+                            showResultDialog(true);
                         }
                     }
                 }
@@ -96,41 +134,186 @@ public class PuzzleGameActivity extends AppCompatActivity {
         }
     }
 
+    private void startTimer() {
+        timer = new CountDownTimer(TOTAL_TIME, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                timerText.setText("Time: " + millisUntilFinished / 1000);
+            }
+
+            @Override
+            public void onFinish() {
+                showResultDialog(false);
+            }
+        };
+        timer.start();
+    }
+
     private boolean checkIfSolved() {
-        for (int i = 0; i < pieceDrawables.length; i++) {
+        for (int i = 0; i < correctPieces.size(); i++) {
             ImageView slot = slots.get(i);
-            Integer tag = (Integer) slot.getTag();
-            if (tag == null || tag != pieceDrawables[i]) {
+            Bitmap current = ((BitmapDrawable) slot.getDrawable()).getBitmap();
+            if (!current.sameAs(correctPieces.get(i))) {
                 return false;
             }
         }
         return true;
     }
 
-    private void showWinDialog() {
+    private void showResultDialog(boolean isWin) {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 50, 50, 50);
 
-        TextView scoreText = new TextView(this);
-        scoreText.setText("Selamat! Puzzle selesai!");
-        scoreText.setTextSize(18);
-        layout.addView(scoreText);
+        TextView resultText = new TextView(this);
+        resultText.setText(isWin ? "Selamat! Puzzle selesai!" : "Waktu habis! Kamu kalah.");
+        resultText.setTextSize(18);
+        layout.addView(resultText);
 
         Button btnRetry = new Button(this);
         btnRetry.setText("Lanjut");
-        btnRetry.setOnClickListener(v -> setupPuzzle());
+        btnRetry.setOnClickListener(v -> {
+            if (resultDialog != null) resultDialog.dismiss();
+            setupPuzzle();
+            startTimer();
+        });
         layout.addView(btnRetry);
 
         Button btnBack = new Button(this);
         btnBack.setText("Kembali");
-        btnBack.setOnClickListener(v -> finish());
+        btnBack.setOnClickListener(v -> {
+            if (resultDialog != null) resultDialog.dismiss();
+            finish();
+        });
         layout.addView(btnBack);
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        resultDialog = new AlertDialog.Builder(this)
                 .setView(layout)
                 .setCancelable(false)
                 .create();
-        dialog.show();
+        resultDialog.show();
+    }
+
+    private void pauseGame() {
+        if (timer != null) timer.cancel();
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 50, 50, 50);
+        layout.setBackgroundColor(Color.WHITE);
+
+        TextView pausedText = new TextView(this);
+        pausedText.setText("Permainan Dijeda");
+        pausedText.setTextSize(20);
+        pausedText.setTextColor(Color.BLACK);
+        pausedText.setPadding(0, 0, 0, 32);
+        layout.addView(pausedText);
+
+        layout.addView(createButtonRow(R.drawable.lanjutkan, "Kembali Main", v -> {
+            pauseDialog.dismiss();
+            startTimer();
+        }));
+
+        layout.addView(createButtonRow(R.drawable.ulangi, "Ulangi", v -> {
+            pauseDialog.dismiss();
+            setupPuzzle();
+            startTimer();
+        }));
+
+        layout.addView(createButtonRow(R.drawable.home, "Keluar Game", v -> {
+            pauseDialog.dismiss();
+            finish();
+        }));
+
+        pauseDialog = new AlertDialog.Builder(this)
+                .setView(layout)
+                .setCancelable(false)
+                .create();
+        pauseDialog.show();
+    }
+
+    private LinearLayout createButtonRow(int imageResId, String text, View.OnClickListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(24, 24, 24, 24);
+        row.setBackgroundResource(R.drawable.black_border);
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        rowParams.setMargins(0, 20, 0, 20);
+        row.setLayoutParams(rowParams);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+        ImageButton btn = new ImageButton(this);
+        btn.setImageResource(imageResId);
+        btn.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(200, 200);
+        btnParams.setMargins(0, 0, 40, 0);
+        btn.setLayoutParams(btnParams);
+        btn.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        btn.setAdjustViewBounds(true);
+
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextSize(22);
+        label.setTextColor(Color.BLACK);
+        label.setTypeface(null, android.graphics.Typeface.BOLD);
+        label.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+        row.addView(btn);
+        row.addView(label);
+        row.setOnClickListener(listener);
+
+        return row;
+    }
+
+    private ArrayList<Bitmap> splitImage(Bitmap image) {
+        int rows = 3, cols = 3;
+        int pieceWidth = image.getWidth() / cols;
+        int pieceHeight = image.getHeight() / rows;
+        ArrayList<Bitmap> pieces = new ArrayList<>();
+
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                int x = col * pieceWidth;
+                int y = row * pieceHeight;
+                Bitmap piece = Bitmap.createBitmap(image, x, y, pieceWidth, pieceHeight);
+                pieces.add(piece);
+            }
+        }
+        return pieces;
+    }
+
+    private Bitmap addWhiteBackgroundAndBorder(Bitmap piece) {
+        int borderSize = 4;
+
+        Bitmap output = Bitmap.createBitmap(
+                piece.getWidth() + borderSize * 2,
+                piece.getHeight() + borderSize * 2,
+                Bitmap.Config.ARGB_8888
+        );
+
+        android.graphics.Canvas canvas = new android.graphics.Canvas(output);
+        android.graphics.Paint paint = new android.graphics.Paint();
+
+        paint.setColor(android.graphics.Color.WHITE);
+        paint.setStyle(android.graphics.Paint.Style.FILL);
+        canvas.drawRect(0, 0, output.getWidth(), output.getHeight(), paint);
+
+        canvas.drawBitmap(piece, borderSize, borderSize, null);
+
+        paint.setStyle(android.graphics.Paint.Style.STROKE);
+        paint.setStrokeWidth(3);
+        paint.setColor(android.graphics.Color.BLACK);
+        canvas.drawRect(
+                1.5f, 1.5f,
+                output.getWidth() - 1.5f,
+                output.getHeight() - 1.5f,
+                paint
+        );
+
+        return output;
     }
 }

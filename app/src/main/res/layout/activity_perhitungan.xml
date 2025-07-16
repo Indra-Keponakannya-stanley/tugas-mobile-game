@@ -1,45 +1,194 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_buah"
+    tools:context=".GamePerhitunganActivity">
 
+    <!-- Timer -->
     <TextView
-        android:id="@+id/tvQuestion"
-        android:text="Soal akan muncul di sini"
-        android:textSize="24sp"
-        android:layout_marginBottom="32dp"
+        android:id="@+id/timerText"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <Button
-        android:id="@+id/btnOption1"
-        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Opsi 1"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/btnOption2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Opsi 2"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/btnOption3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Opsi 3" />
-
-    <TextView
-        android:id="@+id/tvScore"
-        android:text="Skor: 0"
+        android:text="Time: 60"
         android:textSize="18sp"
-        android:layout_marginTop="32dp"
+        android:textStyle="bold"
+        android:textColor="#000"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_alignParentStart="true" />
+
+    <!-- Score di bawah timer -->
+    <TextView
+        android:id="@+id/scoreText"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-</LinearLayout>
+        android:layout_height="wrap_content"
+        android:text="Score: 0"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#000"
+        android:layout_below="@id/timerText"
+        android:layout_alignStart="@id/timerText"
+        android:layout_marginTop="8dp" />
+
+    <!-- Tombol Pause di kanan atas -->
+    <ImageButton
+        android:id="@+id/btnPause"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_pause"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="Pause Button" />
+
+    <!-- Soal: Buah + angka -->
+    <LinearLayout
+        android:id="@+id/questionLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/scoreText"
+        android:layout_marginTop="40dp">
+
+        <!-- Buah 1 -->
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center">
+
+            <ImageView
+                android:id="@+id/buah1Image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/angka1Text"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="?"
+                android:textSize="24sp"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+
+        <!-- Tanda + -->
+        <TextView
+            android:text="+"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_gravity="center_vertical" />
+
+        <!-- Buah 2 -->
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center">
+
+            <ImageView
+                android:id="@+id/buah2Image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/angka2Text"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="?"
+                android:textSize="24sp"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Pilihan jawaban -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/questionLayout"
+        android:layout_marginTop="40dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginHorizontal="16dp"
+        android:weightSum="3">
+
+        <!-- Jawaban 1 -->
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="16dp">
+
+            <ImageView
+                android:id="@+id/jawaban1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/angkaJawaban1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="?"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+
+        <!-- Jawaban 2 -->
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="16dp">
+
+            <ImageView
+                android:id="@+id/jawaban2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/angkaJawaban2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="?"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+
+        <!-- Jawaban 3 -->
+        <FrameLayout
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="16dp">
+
+            <ImageView
+                android:id="@+id/jawaban3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/angkaJawaban3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="?"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+    </LinearLayout>
+</RelativeLayout>

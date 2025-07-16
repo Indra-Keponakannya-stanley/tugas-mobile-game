@@ -27,7 +27,7 @@
         <activity android:name=".PuzzleGameActivity" />
 
         <!-- Game Perhitungan -->
-        <activity android:name=".PerhitunganActivity" />
+        <activity android:name=".GamePerhitunganActivity" />
 
         <!-- Game Memory -->
         <activity android:name=".MemoryGameActivity" />

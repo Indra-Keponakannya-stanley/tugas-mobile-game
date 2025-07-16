@@ -1,53 +1,98 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
-    android:gravity="center"
-    android:background="#F8F3FB">
+    android:background="@drawable/bg_buah"
+    tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/btnPuzzle"
+    <!-- Logo nama game di atas -->
+
+    <!-- Tombol-tombol utama -->
+
+    <ImageView
+        android:id="@+id/logoNamaGame"
+        android:layout_width="312dp"
+        android:layout_height="307dp"
+        android:layout_alignTop="@+id/buttonLayout"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="53dp"
+        android:layout_marginTop="-207dp"
+        android:layout_marginEnd="46dp"
+        android:contentDescription="Nama Game"
+        android:src="@drawable/nama_game_buah" />
+
+    <LinearLayout
+        android:id="@+id/buttonLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1. Puzzle Game"
-        android:backgroundTint="#673AB7"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/rounded_button"/>
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_centerInParent="true"
+        android:padding="24dp"
+        android:layout_marginTop="16dp">
 
-    <Button
-        android:id="@+id/btnPerhitungan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="2. Game Perhitungan"
-        android:backgroundTint="#673AB7"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/rounded_button"/>
+        <!-- Tombol Puzzle Buah -->
+        <Button
+            android:id="@+id/btnPuzzle"
+            android:layout_width="250dp"
+            android:layout_height="80dp"
+            android:text="Puzzle Buah"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:background="@drawable/tombol_menu"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"/>
 
-    <Button
-        android:id="@+id/btnMemoryGame"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="3. Memory Game"
-        android:backgroundTint="#673AB7"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/rounded_button"/>
+        <!-- Tombol Perhitungan -->
+        <Button
+            android:id="@+id/btnPerhitungan"
+            android:layout_width="250dp"
+            android:layout_height="80dp"
+            android:text="Perhitungan"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:background="@drawable/tombol_menu"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"/>
 
+        <!-- Tombol Mengingat Gambar Buah -->
+        <Button
+            android:id="@+id/btnMemoryGame"
+            android:layout_width="250dp"
+            android:layout_height="80dp"
+            android:text="Mengingat Gambar Buah"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:background="@drawable/tombol_menu"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"/>
+    </LinearLayout>
+
+    <!-- Tombol volume - kiri bawah -->
+    <ImageButton
+        android:id="@+id/btnVolumeToggle"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="16dp"
+        android:background="@android:color/transparent"
+        android:scaleType="fitCenter"
+        android:src="@drawable/volume_on"
+        android:contentDescription="Volume Toggle" />
+
+    <!-- Tombol keluar - kanan bawah -->
     <Button
         android:id="@+id/btnExit"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Exit"
-        android:backgroundTint="#673AB7"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        android:background="@drawable/rounded_button"/>
-</LinearLayout>
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="16dp"
+        android:text="Keluar"
+        android:textStyle="bold"/>
+</RelativeLayout>
