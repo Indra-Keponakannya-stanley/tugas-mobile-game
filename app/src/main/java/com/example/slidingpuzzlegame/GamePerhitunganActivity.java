@@ -1,8 +1,7 @@
 package com.example.slidingpuzzlegame;
 
 import android.app.AlertDialog;
-import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.LayoutInflater;
@@ -15,6 +14,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class GamePerhitunganActivity extends AppCompatActivity {
@@ -28,9 +32,10 @@ public class GamePerhitunganActivity extends AppCompatActivity {
     private CountDownTimer timer;
     private int hasilBenar;
 
-    private ScoreDatabaseHelper dbHelper;
+    private FirebaseFirestore firestore;
+    private FirebaseAuth auth;
 
-    private int[] gambarBuah = {
+    private final int[] gambarBuah = {
             R.drawable.buah1, R.drawable.buah10
     };
 
@@ -39,8 +44,8 @@ public class GamePerhitunganActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_perhitungan);
 
-        // Inisialisasi Database Helper
-        dbHelper = new ScoreDatabaseHelper(this);
+        firestore = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
 
         // Inisialisasi semua view
         scoreText = findViewById(R.id.scoreText);
@@ -84,7 +89,7 @@ public class GamePerhitunganActivity extends AppCompatActivity {
             });
 
             btnHome.setOnClickListener(view -> {
-                simpanScoreKeDatabase(score); // simpan sebelum keluar
+                simpanSkorKeFirestore(score);
                 dialog.dismiss();
                 finish();
             });
@@ -111,7 +116,7 @@ public class GamePerhitunganActivity extends AppCompatActivity {
             public void onFinish() {
                 timerText.setText("Time: 0");
                 Toast.makeText(GamePerhitunganActivity.this, "Waktu Habis!", Toast.LENGTH_SHORT).show();
-                simpanScoreKeDatabase(score); // simpan skor saat waktu habis
+                simpanSkorKeFirestore(score);
                 finish();
             }
         }.start();
@@ -123,7 +128,6 @@ public class GamePerhitunganActivity extends AppCompatActivity {
 
     private void generateSoal() {
         Random rand = new Random();
-
         int angka1 = rand.nextInt(10);
         int angka2 = rand.nextInt(10);
         hasilBenar = angka1 + angka2;
@@ -177,14 +181,57 @@ public class GamePerhitunganActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ Simpan skor ke database
-    private void simpanScoreKeDatabase(int nilai) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("game_name", "Game Perhitungan");
-        values.put("score", nilai);
-        db.insert("scores", null, values);
-        db.close();
-        Toast.makeText(this, "Score tersimpan!", Toast.LENGTH_SHORT).show();
+    private void simpanSkorKeFirestore(int skorPerhitungan) {
+        String uid = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
+        String email = auth.getCurrentUser() != null ? auth.getCurrentUser().getEmail() : "guest@example.com";
+
+        if (uid == null) {
+            Toast.makeText(this, "User belum login!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        firestore.collection("skor").document(uid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    Map<String, Object> data;
+                    if (documentSnapshot.exists()) {
+                        // ✅ Ambil data lama, lalu update skor_Perhitungan dan total
+                        data = documentSnapshot.getData();
+                        if (data == null) data = new HashMap<>();
+
+                        data.put("skor_Perhitungan", skorPerhitungan);
+                        int total = skorPerhitungan
+                                + toInt(data.get("skor_tebak"))
+                                + toInt(data.get("skor_mengingat"))
+                                + toInt(data.get("skor_puzzle"))
+                                + toInt(data.get("skor_flappy"));
+                        data.put("total", total);
+                    } else {
+                        // ✅ Dokumen baru
+                        data = new HashMap<>();
+                        data.put("email", email);
+                        data.put("skor_Perhitungan", skorPerhitungan);
+                        data.put("skor_tebak", 0);
+                        data.put("skor_mengingat", 0);
+                        data.put("skor_puzzle", 0);
+                        data.put("skor_flappy", 0);
+                        data.put("total", skorPerhitungan);
+                    }
+
+                    firestore.collection("skor").document(uid)
+                            .set(data)
+                            .addOnSuccessListener(aVoid ->
+                                    Toast.makeText(this, "Skor berhasil disimpan ke Firestore", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(this, "Gagal simpan skor: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Gagal akses Firestore: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
-}
+
+    private int toInt(Object obj) {
+        try {
+            return obj instanceof Number ? ((Number) obj).intValue() : Integer.parseInt(String.valueOf(obj));
+        } catch (Exception e) {
+            return 0;
+        }
+    }}

@@ -9,6 +9,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -216,7 +217,8 @@ public class MemoryGameActivity extends AppCompatActivity {
                         isClickable = true;
                     }
 
-                    public void onTick(long millisUntilFinished) {}
+                    public void onTick(long millisUntilFinished) {
+                    }
                 }.start();
             }
         }
@@ -281,30 +283,45 @@ public class MemoryGameActivity extends AppCompatActivity {
 
     // ✅ Fungsi Simpan Skor ke Firebase
     private void saveScoreToFirebase(int skorMengingat) {
-        String email = (auth.getCurrentUser() != null) ? auth.getCurrentUser().getEmail() : "guest";
+        String uid = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
+        String email = auth.getCurrentUser() != null ? auth.getCurrentUser().getEmail() : "guest";
 
-        Map<String, Object> data = new HashMap<>();
-        data.put("email", email);
-        data.put("skor_mengingat", skorMengingat);
+        if (uid == null) {
+            Toast.makeText(this, "User belum login!", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        // ✅ Update ke Firestore (merge dengan data lama)
-        db.collection("skor").document(email)
-                .set(data, com.google.firebase.firestore.SetOptions.merge())
-                .addOnSuccessListener(aVoid -> {
-                    // ✅ Update total skor juga
-                    db.collection("skor").document(email).get().addOnSuccessListener(doc -> {
-                        if (doc.exists()) {
-                            long total = 0;
-                            if (doc.contains("skor_flappy")) total += doc.getLong("skor_flappy");
-                            if (doc.contains("skor_puzzle")) total += doc.getLong("skor_puzzle");
-                            if (doc.contains("skor_tebak")) total += doc.getLong("skor_tebak");
-                            total += skorMengingat;
-                            if (doc.contains("skor_Perhitungan")) total += doc.getLong("skor_Perhitungan");
+        db.collection("skor").document(uid).get().addOnSuccessListener(doc -> {
+            Map<String, Object> data = doc.exists() ? doc.getData() : new HashMap<>();
+            if (data == null) data = new HashMap<>();
 
-                            db.collection("skor").document(email)
-                                    .update("total", total);
-                        }
+            data.put("email", email); // hanya diset saat pertama kali
+            data.put("skor_mengingat", skorMengingat);
+
+            int total = skorMengingat
+                    + toInt(data.get("skor_puzzle"))
+                    + toInt(data.get("skor_flappy"))
+                    + toInt(data.get("skor_tebak"))
+                    + toInt(data.get("skor_Perhitungan"));
+
+            data.put("total", total);
+
+            db.collection("skor").document(uid)
+                    .set(data)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Skor mengingat disimpan", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Gagal simpan: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
-                });
+        });
+    }
+
+    private int toInt(Object obj) {
+        try {
+            return obj instanceof Number ? ((Number) obj).intValue() : Integer.parseInt(String.valueOf(obj));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

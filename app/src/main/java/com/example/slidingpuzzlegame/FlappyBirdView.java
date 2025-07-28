@@ -11,7 +11,6 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
@@ -29,8 +28,7 @@ public class FlappyBirdView extends View {
     // Waktu
     private long startTime;
     private long elapsedTime;
-    private long pauseTime;
-    private long firstPipeDelay = 3000; // Delay 3 detik sebelum pipa pertama muncul
+    private long firstPipeDelay = 3000;
 
     // Sound
     private SoundPool soundPool;
@@ -85,6 +83,10 @@ public class FlappyBirdView extends View {
     // SharedPreferences
     private SharedPreferences prefs;
 
+    // ✅ Firestore
+    private FirebaseAuth auth;
+    private FirebaseFirestore firestore;
+
     public FlappyBirdView(Context context) {
         super(context);
         paint = new Paint();
@@ -97,6 +99,10 @@ public class FlappyBirdView extends View {
 
         pipes = new ArrayList<>();
         passedPipes = new ArrayList<>();
+
+        // ✅ Init Firebase
+        auth = FirebaseAuth.getInstance();
+        firestore = FirebaseFirestore.getInstance();
 
         // Sound
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -133,7 +139,6 @@ public class FlappyBirdView extends View {
                 groundHeight, true);
         groundX2 = groundBitmap.getWidth();
 
-        // Tidak menambahkan pipa di awal game
         startTime = System.currentTimeMillis();
     }
 
@@ -150,40 +155,11 @@ public class FlappyBirdView extends View {
                 200 + fruitSize / 2, birdY + fruitSize / 2);
     }
 
-    private void addPipe(int x) {
-        int gap;
-        int centerY;
-
-        if (score <= 10) {
-            gap = 500;
-            centerY = random.nextInt(getHeight() - groundHeight - 400) + 200;
-        } else if (score <= 30) {
-            gap = 420;
-            centerY = random.nextInt(getHeight() - groundHeight - 400) + 200;
-        } else if (score <= 50) {
-            gap = 350;
-            centerY = random.nextInt(getHeight() - groundHeight - 400) + 200;
-        } else {
-            gap = 300;
-            centerY = random.nextInt(getHeight() - groundHeight - 400) + 200;
-        }
-
-        int topPipeBottom = centerY - (gap / 2);
-        int bottomPipeTop = centerY + (gap / 2);
-
-        Rect top1 = new Rect(x, 0, x + pipeWidth, topPipeBottom);
-        Rect bottom1 = new Rect(x, bottomPipeTop, x + pipeWidth, getHeight());
-
-        pipes.add(top1);
-        pipes.add(bottom1);
-        passedPipes.add(false);
-    }
-
+    // ================= GAME DRAWING =======================
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        // ✅ Countdown sebelum mulai
         if (isCountingDown) {
             paint.setColor(Color.RED);
             paint.setTextSize(150);
@@ -204,18 +180,16 @@ public class FlappyBirdView extends View {
         canvas.drawBitmap(backgroundBitmap, bgX1, 0, null);
         canvas.drawBitmap(backgroundBitmap, bgX2, 0, null);
 
-        // Update buah
         fruitRect.set(200 - fruitSize / 2, birdY - fruitSize / 2,
                 200 + fruitSize / 2, birdY + fruitSize / 2);
         canvas.drawBitmap(fruitBitmap, fruitRect.left, fruitRect.top, null);
 
-        // Burung bergerak
         if (!gameOver && !isPaused && isGameStarted) {
             birdY += velocity;
             velocity += gravity;
         }
 
-        // Gerakan & gambar pipa
+        // Gerakan pipa
         ArrayList<Rect> newPipes = new ArrayList<>();
         ArrayList<Boolean> newPassed = new ArrayList<>();
 
@@ -237,11 +211,9 @@ public class FlappyBirdView extends View {
                 newPassed.add(passedPipes.get(i / 2));
             }
         }
-
         pipes = newPipes;
         passedPipes = newPassed;
 
-        // Spawn pipa hanya setelah 3 detik pertama
         if (isGameStarted && (System.currentTimeMillis() - startTime) > firstPipeDelay) {
             if (pipes.isEmpty() || (getWidth() - lastPipeX) > 500) {
                 lastPipeX = getWidth();
@@ -249,37 +221,31 @@ public class FlappyBirdView extends View {
             }
         }
 
-        // Cek tabrakan
         if (!isPaused && !gameOver && isGameStarted) {
             for (int i = 0; i < pipes.size(); i += 2) {
                 Rect top = pipes.get(i);
                 Rect bottom = pipes.get(i + 1);
-
                 if (checkPixelCollision(top) || checkPixelCollision(bottom)) triggerGameOver();
-
                 int pairIndex = i / 2;
                 if (!passedPipes.get(pairIndex) && fruitRect.left > top.right) {
                     score++;
                     passedPipes.set(pairIndex, true);
                 }
             }
-
             if (birdY > getHeight() - fruitSize / 2 - groundHeight) triggerGameOver();
         }
 
-        // Scroll ground
+        // Ground
         if (!isPaused && !gameOver && isGameStarted) {
             groundX1 -= pipeSpeed;
             groundX2 -= pipeSpeed;
             if (groundX1 + groundBitmap.getWidth() < 0) groundX1 = groundX2 + groundBitmap.getWidth();
             if (groundX2 + groundBitmap.getWidth() < 0) groundX2 = groundX1 + groundBitmap.getWidth();
         }
-
         int groundY = getHeight() - groundHeight;
         canvas.drawBitmap(groundBitmap, groundX1, groundY, null);
         canvas.drawBitmap(groundBitmap, groundX2, groundY, null);
 
-        // Skor & Waktu
         paint.setColor(Color.BLACK);
         paint.setTextSize(70);
         paint.setTextAlign(Paint.Align.LEFT);
@@ -289,7 +255,6 @@ public class FlappyBirdView extends View {
         long seconds = elapsedTime / 1000;
         canvas.drawText("Waktu: " + seconds + "s", 50, 180, paint);
 
-        // Pesan Tap to Start
         if (!isGameStarted && !gameOver) {
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setColor(Color.BLUE);
@@ -299,10 +264,23 @@ public class FlappyBirdView extends View {
         if (!gameOver) invalidate();
     }
 
+    private void addPipe(int x) {
+        int gap = (score <= 10) ? 500 : (score <= 30) ? 420 : (score <= 50) ? 350 : 300;
+        int centerY = random.nextInt(getHeight() - groundHeight - 400) + 200;
+
+        Rect top1 = new Rect(x, 0, x + pipeWidth, centerY - gap / 2);
+        Rect bottom1 = new Rect(x, centerY + gap / 2, x + pipeWidth, getHeight());
+
+        pipes.add(top1);
+        pipes.add(bottom1);
+        passedPipes.add(false);
+    }
+
     private boolean checkPixelCollision(Rect pipe) {
         return Rect.intersects(pipe, fruitRect);
     }
 
+    // ================= GAME OVER =======================
     private void triggerGameOver() {
         if (!gameOver) {
             gameOver = true;
@@ -335,6 +313,59 @@ public class FlappyBirdView extends View {
                 .show();
     }
 
+    // ================= FIRESTORE SAVE =======================
+    private void saveFlappyScoreToFirestore(int skorFlappy) {
+        if (auth.getCurrentUser() == null) {
+            Toast.makeText(getContext(), "User belum login!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String uid = auth.getCurrentUser().getUid();
+        String email = auth.getCurrentUser().getEmail();
+
+        firestore.collection("skor").document(uid).get()
+                .addOnSuccessListener(doc -> {
+                    Map<String, Object> data;
+                    if (doc.exists()) {
+                        data = doc.getData();
+                        if (data == null) data = new HashMap<>();
+                        data.put("skor_flappy", skorFlappy);
+                        int total = skorFlappy
+                                + toInt(data.get("skor_Perhitungan"))
+                                + toInt(data.get("skor_tebak"))
+                                + toInt(data.get("skor_mengingat"))
+                                + toInt(data.get("skor_puzzle"));
+                        data.put("total", total);
+                    } else {
+                        data = new HashMap<>();
+                        data.put("email", email);
+                        data.put("skor_flappy", skorFlappy);
+                        data.put("skor_Perhitungan", 0);
+                        data.put("skor_tebak", 0);
+                        data.put("skor_mengingat", 0);
+                        data.put("skor_puzzle", 0);
+                        data.put("total", skorFlappy);
+                    }
+
+                    firestore.collection("skor").document(uid).set(data)
+                            .addOnSuccessListener(aVoid ->
+                                    Toast.makeText(getContext(), "✅ Skor Flappy Bird tersimpan!", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(), "❌ Gagal simpan skor: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "❌ Gagal akses Firestore: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private int toInt(Object obj) {
+        try {
+            return obj instanceof Number ? ((Number) obj).intValue() : Integer.parseInt(String.valueOf(obj));
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    // ================= CONTROL =======================
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -389,36 +420,5 @@ public class FlappyBirdView extends View {
             resumeGame();
             postInvalidate();
         }).start();
-    }
-
-    private void saveFlappyScoreToFirestore(int skor) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        FirebaseUser user = mAuth.getCurrentUser();
-
-        if (user != null) {
-            db.collection("skor")
-                    .whereEqualTo("email", user.getEmail())
-                    .get()
-                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                        if (!queryDocumentSnapshots.isEmpty()) {
-                            // Update skor_flappy di dokumen yang ada
-                            String docId = queryDocumentSnapshots.getDocuments().get(0).getId();
-                            db.collection("skor").document(docId)
-                                    .update("skor_flappy", skor)
-                                    .addOnSuccessListener(aVoid ->
-                                            Toast.makeText(getContext(), "Skor Flappy diperbarui!", Toast.LENGTH_SHORT).show());
-                        } else {
-                            // Jika user belum punya data skor, buat dokumen baru
-                            Map<String, Object> newData = new HashMap<>();
-                            newData.put("email", user.getEmail());
-                            newData.put("skor_flappy", skor);
-                            newData.put("skor_tebak", 0);
-                            newData.put("skor_puzzle", 0);
-                            newData.put("total", skor);
-                            db.collection("skor").add(newData);
-                        }
-                    });
-        }
     }
 }
