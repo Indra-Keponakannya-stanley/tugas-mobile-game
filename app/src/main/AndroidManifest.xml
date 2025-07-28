@@ -13,7 +13,19 @@
         android:theme="@style/Theme.SlidingPuzzleGame"
         tools:targetApi="31">
 
-        <!-- Launcher ke menu utama -->
+        <!-- Activity Leaderboard DIPINDAH KE SINI -->
+        <activity android:name=".LeaderboardActivity" />
+
+        <activity
+            android:name=".TebakActivity"
+            android:exported="false" />
+
+        <activity android:name=".PuzzleGameActivity" />
+        <activity android:name=".GamePerhitunganActivity" />
+        <activity android:name=".MemoryGameActivity" />
+        <activity android:name=".FlappyBirdActivity" />
+
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -23,14 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Game Puzzle -->
-        <activity android:name=".PuzzleGameActivity" />
-
-        <!-- Game Perhitungan -->
-        <activity android:name=".GamePerhitunganActivity" />
-
-        <!-- Game Memory -->
-        <activity android:name=".MemoryGameActivity" />
-
     </application>
+
 </manifest>

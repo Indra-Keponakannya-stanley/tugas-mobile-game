@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "585222924110",
+    "project_id": "gamebuah-a44e3",
+    "storage_bucket": "gamebuah-a44e3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:585222924110:android:5f464d1c1f208d7d6e601f",
+        "android_client_info": {
+          "package_name": "com.example.slidingpuzzlegame"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXbtFfRhkMa6q1VOONoLmlvJu2udU_KLQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

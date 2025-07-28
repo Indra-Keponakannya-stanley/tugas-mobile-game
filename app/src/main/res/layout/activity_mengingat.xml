@@ -35,7 +35,7 @@
         android:layout_below="@id/timerText"
         android:layout_marginTop="16dp"
         android:columnCount="4"
-        android:rowCount="4"
+        android:rowCount="5"
         android:useDefaultMargins="true"
         android:alignmentMode="alignMargins" />
 </RelativeLayout>

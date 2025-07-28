@@ -1,19 +1,18 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("com.android.application")
+    id("com.google.gms.google-services") // ✅ Plugin Google Services
 }
 
 android {
     namespace = "com.example.slidingpuzzlegame"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.slidingpuzzlegame"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = 23
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -25,19 +24,24 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
 }
 
 dependencies {
+    // ✅ Firebase BoM: Mengelola semua versi library Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
 
-    implementation(libs.appcompat)
-    implementation(libs.material)
-    implementation(libs.activity)
-    implementation(libs.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
+    // ✅ Tambahkan layanan Firebase yang dibutuhkan
+    implementation("com.google.firebase:firebase-analytics") // Opsional
+    implementation("com.google.firebase:firebase-auth") // ⬅️ WAJIB untuk login/registrasi Firebase
+    implementation("com.google.firebase:firebase-firestore") // ⬅️ WAJIB untuk simpan skor ke Firestore
+
+    // ✅ UI Komponen
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+
+
 }
