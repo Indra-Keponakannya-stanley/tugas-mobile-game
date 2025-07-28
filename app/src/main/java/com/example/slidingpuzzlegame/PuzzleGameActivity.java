@@ -9,21 +9,19 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.DragEvent;
 import android.view.View;
-import android.widget.Button;
-import android.widget.GridLayout;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.*;
 import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Random;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.*;
 
 public class PuzzleGameActivity extends AppCompatActivity {
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
 
     private GridLayout puzzleGrid;
     private TextView timerText, scoreText;
@@ -45,11 +43,14 @@ public class PuzzleGameActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_puzzle_game);
 
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
+
         puzzleGrid = findViewById(R.id.puzzleGrid);
         timerText = findViewById(R.id.timerText);
         scoreText = findViewById(R.id.scoreText);
         btnPause = findViewById(R.id.btnPause);
-        imagePreview = findViewById(R.id.imagePreview); // ✅ Referensi gambar buah
+        imagePreview = findViewById(R.id.imagePreview);
 
         setupPuzzle();
         startTimer();
@@ -60,13 +61,13 @@ public class PuzzleGameActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     private void setupPuzzle() {
         int[] buahImages = {
-                R.drawable.buah1, R.drawable.buah2, R.drawable.buah3, R.drawable.buah4,
-                R.drawable.buah5, R.drawable.buah6, R.drawable.buah7, R.drawable.buah8,
-                R.drawable.buah9, R.drawable.buah10
+                R.drawable.buah1, R.drawable.buah2, R.drawable.buah3,
+                R.drawable.buah4, R.drawable.buah5, R.drawable.buah6,
+                R.drawable.buah7, R.drawable.buah8, R.drawable.buah9, R.drawable.buah10
         };
 
         int randomImageResId = buahImages[new Random().nextInt(buahImages.length)];
-        imagePreview.setImageResource(randomImageResId); // ✅ Tampilkan gambar referensi buah
+        imagePreview.setImageResource(randomImageResId);
 
         Bitmap originalBitmap = BitmapFactory.decodeResource(getResources(), randomImageResId);
         correctPieces = new ArrayList<>();
@@ -80,15 +81,15 @@ public class PuzzleGameActivity extends AppCompatActivity {
         puzzleGrid.removeAllViews();
         slots.clear();
 
-        for (int i = 0; i < shuffled.size(); i++) {
+        for (Bitmap bitmap : shuffled) {
             ImageView slot = new ImageView(this);
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = 200;
             params.height = 200;
             slot.setLayoutParams(params);
             slot.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            slot.setImageBitmap(shuffled.get(i));
-            slot.setTag(shuffled.get(i));
+            slot.setImageBitmap(bitmap);
+            slot.setTag(bitmap);
 
             slot.setOnTouchListener((v, event) -> {
                 View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
@@ -99,18 +100,12 @@ public class PuzzleGameActivity extends AppCompatActivity {
             slot.setOnDragListener((targetView, event) -> {
                 if (event.getAction() == DragEvent.ACTION_DROP) {
                     View draggedView = (View) event.getLocalState();
-                    if (draggedView != targetView &&
-                            draggedView instanceof ImageView &&
-                            targetView instanceof ImageView) {
-
+                    if (draggedView != targetView) {
                         ImageView from = (ImageView) draggedView;
                         ImageView to = (ImageView) targetView;
 
-                        BitmapDrawable fromDrawable = (BitmapDrawable) from.getDrawable();
-                        BitmapDrawable toDrawable = (BitmapDrawable) to.getDrawable();
-
-                        Bitmap fromBitmap = fromDrawable.getBitmap();
-                        Bitmap toBitmap = toDrawable.getBitmap();
+                        Bitmap fromBitmap = ((BitmapDrawable) from.getDrawable()).getBitmap();
+                        Bitmap toBitmap = ((BitmapDrawable) to.getDrawable()).getBitmap();
 
                         from.setImageBitmap(toBitmap);
                         from.setTag(toBitmap);
@@ -122,6 +117,7 @@ public class PuzzleGameActivity extends AppCompatActivity {
                             if (timer != null) timer.cancel();
                             score++;
                             scoreText.setText("Score: " + score);
+                            saveScoreToDatabase(score);
                             showResultDialog(true);
                         }
                     }
@@ -136,26 +132,20 @@ public class PuzzleGameActivity extends AppCompatActivity {
 
     private void startTimer() {
         timer = new CountDownTimer(TOTAL_TIME, 1000) {
-            @Override
             public void onTick(long millisUntilFinished) {
                 timerText.setText("Time: " + millisUntilFinished / 1000);
             }
 
-            @Override
             public void onFinish() {
                 showResultDialog(false);
             }
-        };
-        timer.start();
+        }.start();
     }
 
     private boolean checkIfSolved() {
         for (int i = 0; i < correctPieces.size(); i++) {
-            ImageView slot = slots.get(i);
-            Bitmap current = ((BitmapDrawable) slot.getDrawable()).getBitmap();
-            if (!current.sameAs(correctPieces.get(i))) {
-                return false;
-            }
+            Bitmap current = ((BitmapDrawable) slots.get(i).getDrawable()).getBitmap();
+            if (!current.sameAs(correctPieces.get(i))) return false;
         }
         return true;
     }
@@ -206,7 +196,6 @@ public class PuzzleGameActivity extends AppCompatActivity {
         pausedText.setText("Permainan Dijeda");
         pausedText.setTextSize(20);
         pausedText.setTextColor(Color.BLACK);
-        pausedText.setPadding(0, 0, 0, 32);
         layout.addView(pausedText);
 
         layout.addView(createButtonRow(R.drawable.lanjutkan, "Kembali Main", v -> {
@@ -238,29 +227,18 @@ public class PuzzleGameActivity extends AppCompatActivity {
         row.setPadding(24, 24, 24, 24);
         row.setBackgroundResource(R.drawable.black_border);
 
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        rowParams.setMargins(0, 20, 0, 20);
-        row.setLayoutParams(rowParams);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-
         ImageButton btn = new ImageButton(this);
         btn.setImageResource(imageResId);
         btn.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(200, 200);
         btnParams.setMargins(0, 0, 40, 0);
         btn.setLayoutParams(btnParams);
-        btn.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        btn.setAdjustViewBounds(true);
 
         TextView label = new TextView(this);
         label.setText(text);
         label.setTextSize(22);
         label.setTextColor(Color.BLACK);
         label.setTypeface(null, android.graphics.Typeface.BOLD);
-        label.setGravity(android.view.Gravity.CENTER_VERTICAL);
 
         row.addView(btn);
         row.addView(label);
@@ -279,8 +257,7 @@ public class PuzzleGameActivity extends AppCompatActivity {
             for (int col = 0; col < cols; col++) {
                 int x = col * pieceWidth;
                 int y = row * pieceHeight;
-                Bitmap piece = Bitmap.createBitmap(image, x, y, pieceWidth, pieceHeight);
-                pieces.add(piece);
+                pieces.add(Bitmap.createBitmap(image, x, y, pieceWidth, pieceHeight));
             }
         }
         return pieces;
@@ -298,7 +275,7 @@ public class PuzzleGameActivity extends AppCompatActivity {
         android.graphics.Canvas canvas = new android.graphics.Canvas(output);
         android.graphics.Paint paint = new android.graphics.Paint();
 
-        paint.setColor(android.graphics.Color.WHITE);
+        paint.setColor(Color.WHITE);
         paint.setStyle(android.graphics.Paint.Style.FILL);
         canvas.drawRect(0, 0, output.getWidth(), output.getHeight(), paint);
 
@@ -306,7 +283,7 @@ public class PuzzleGameActivity extends AppCompatActivity {
 
         paint.setStyle(android.graphics.Paint.Style.STROKE);
         paint.setStrokeWidth(3);
-        paint.setColor(android.graphics.Color.BLACK);
+        paint.setColor(Color.BLACK);
         canvas.drawRect(
                 1.5f, 1.5f,
                 output.getWidth() - 1.5f,
@@ -315,5 +292,47 @@ public class PuzzleGameActivity extends AppCompatActivity {
         );
 
         return output;
+    }
+
+    // ✅ Fungsi untuk menyimpan skor ke Firebase Firestore
+    private void saveScoreToDatabase(int skorPuzzle) {
+        if (mAuth.getCurrentUser() == null) return;
+
+        String userId = mAuth.getCurrentUser().getUid();
+
+        db.collection("skor").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        long skorFlappy = documentSnapshot.getLong("skor_flappy") != null ?
+                                documentSnapshot.getLong("skor_flappy") : 0;
+                        long skorTebak = documentSnapshot.getLong("skor_tebak") != null ?
+                                documentSnapshot.getLong("skor_tebak") : 0;
+
+                        long totalBaru = skorFlappy + skorTebak + skorPuzzle;
+
+                        Map<String, Object> updateData = new HashMap<>();
+                        updateData.put("skor_puzzle", skorPuzzle);
+                        updateData.put("total", totalBaru);
+
+                        db.collection("skor").document(userId)
+                                .update(updateData)
+                                .addOnSuccessListener(aVoid -> System.out.println("✅ Skor puzzle dan total berhasil diperbarui"))
+                                .addOnFailureListener(e -> System.err.println("❌ Gagal memperbarui skor: " + e.getMessage()));
+                    } else {
+                        // Jika dokumen belum ada, buat baru
+                        Map<String, Object> newData = new HashMap<>();
+                        newData.put("email", mAuth.getCurrentUser().getEmail());
+                        newData.put("skor_flappy", 0);
+                        newData.put("skor_puzzle", skorPuzzle);
+                        newData.put("skor_tebak", 0);
+                        newData.put("total", skorPuzzle);
+
+                        db.collection("skor").document(userId)
+                                .set(newData)
+                                .addOnSuccessListener(aVoid -> System.out.println("✅ Dokumen skor baru berhasil dibuat"))
+                                .addOnFailureListener(e -> System.err.println("❌ Gagal membuat dokumen baru: " + e.getMessage()));
+                    }
+                })
+                .addOnFailureListener(e -> System.err.println("❌ Gagal membaca dokumen skor: " + e.getMessage()));
     }
 }

@@ -12,8 +12,13 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MemoryGameActivity extends AppCompatActivity {
 
@@ -29,13 +34,17 @@ public class MemoryGameActivity extends AppCompatActivity {
     ArrayList<Integer> imageList = new ArrayList<>();
     ArrayList<ImageView> cardViews = new ArrayList<>();
     GridLayout gridLayout;
-    TextView timerText;
+    TextView timerText, scoreText;
     ImageButton btnPause;
     int firstCardIndex = -1;
     int matchesFound = 0;
     int attempts = 0;
     boolean isClickable = false;
     int score = 0;
+
+    // ✅ Firebase
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +53,12 @@ public class MemoryGameActivity extends AppCompatActivity {
 
         gridLayout = findViewById(R.id.gridLayout);
         timerText = findViewById(R.id.timerText);
-        btnPause = findViewById(R.id.btnPause); // ✅ WAJIB agar tidak null
+        scoreText = findViewById(R.id.scoreText);
+        btnPause = findViewById(R.id.btnPause);
+
+        // ✅ Firebase Init
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
 
         btnPause.setOnClickListener(v -> {
             if (timer != null) timer.cancel();
@@ -72,7 +86,7 @@ public class MemoryGameActivity extends AppCompatActivity {
 
             btnHome.setOnClickListener(view -> {
                 dialog.dismiss();
-                finish(); // keluar dari activity
+                finish();
             });
 
             dialog.show();
@@ -90,6 +104,7 @@ public class MemoryGameActivity extends AppCompatActivity {
         attempts = 0;
         score = 0;
         firstCardIndex = -1;
+        updateScore();
 
         for (int resId : imageResIds) {
             imageList.add(resId);
@@ -100,7 +115,7 @@ public class MemoryGameActivity extends AppCompatActivity {
         for (int i = 0; i < imageList.size(); i++) {
             final int index = i;
             ImageView card = new ImageView(this);
-            card.setImageResource(imageList.get(i)); // preview sementara
+            card.setImageResource(imageList.get(i));
             card.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
             GridLayout.LayoutParams param = new GridLayout.LayoutParams();
@@ -110,17 +125,14 @@ public class MemoryGameActivity extends AppCompatActivity {
             param.columnSpec = GridLayout.spec(i % 4, 1f);
             card.setLayoutParams(param);
 
-            card.setTag("hidden"); // status awal
+            card.setTag("hidden");
             cardViews.add(card);
             gridLayout.addView(card);
 
-            card.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (!isClickable || "matched".equals(card.getTag()) || card.getDrawable() != null && !"hidden".equals(card.getTag()))
-                        return;
-                    handleCardClick(index);
-                }
+            card.setOnClickListener(v -> {
+                if (!isClickable || "matched".equals(card.getTag()) || !"hidden".equals(card.getTag()))
+                    return;
+                handleCardClick(index);
             });
         }
     }
@@ -179,6 +191,9 @@ public class MemoryGameActivity extends AppCompatActivity {
                 matchesFound++;
                 attempts++;
 
+                score += 100; // ✅ Tambah poin
+                updateScore();
+
                 clickedCard.setTag("matched");
                 firstCard.setTag("matched");
 
@@ -201,8 +216,7 @@ public class MemoryGameActivity extends AppCompatActivity {
                         isClickable = true;
                     }
 
-                    public void onTick(long millisUntilFinished) {
-                    }
+                    public void onTick(long millisUntilFinished) {}
                 }.start();
             }
         }
@@ -218,7 +232,9 @@ public class MemoryGameActivity extends AppCompatActivity {
             }
         }
 
-        score = (matchesFound * 100) / (attempts == 0 ? 1 : attempts);
+        // ✅ Simpan skor ke Firebase
+        saveScoreToFirebase(score);
+
         showScoreDialog();
     }
 
@@ -243,25 +259,52 @@ public class MemoryGameActivity extends AppCompatActivity {
                 .setCancelable(false)
                 .create();
 
-        retry.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-                setupGame();
-                previewCards();
-            }
+        retry.setOnClickListener(v -> {
+            dialog.dismiss();
+            setupGame();
+            previewCards();
         });
 
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-                finish();
-            }
+        back.setOnClickListener(v -> {
+            dialog.dismiss();
+            finish();
         });
 
         layout.addView(retry);
         layout.addView(back);
         dialog.show();
+    }
+
+    private void updateScore() {
+        scoreText.setText("Score: " + score);
+    }
+
+    // ✅ Fungsi Simpan Skor ke Firebase
+    private void saveScoreToFirebase(int skorMengingat) {
+        String email = (auth.getCurrentUser() != null) ? auth.getCurrentUser().getEmail() : "guest";
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("email", email);
+        data.put("skor_mengingat", skorMengingat);
+
+        // ✅ Update ke Firestore (merge dengan data lama)
+        db.collection("skor").document(email)
+                .set(data, com.google.firebase.firestore.SetOptions.merge())
+                .addOnSuccessListener(aVoid -> {
+                    // ✅ Update total skor juga
+                    db.collection("skor").document(email).get().addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            long total = 0;
+                            if (doc.contains("skor_flappy")) total += doc.getLong("skor_flappy");
+                            if (doc.contains("skor_puzzle")) total += doc.getLong("skor_puzzle");
+                            if (doc.contains("skor_tebak")) total += doc.getLong("skor_tebak");
+                            total += skorMengingat;
+                            if (doc.contains("skor_Perhitungan")) total += doc.getLong("skor_Perhitungan");
+
+                            db.collection("skor").document(email)
+                                    .update("total", total);
+                        }
+                    });
+                });
     }
 }

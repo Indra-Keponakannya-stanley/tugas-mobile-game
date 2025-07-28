@@ -9,14 +9,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
-
-import javax.annotation.Nullable;
 
 public class LeaderboardActivity extends AppCompatActivity {
 
@@ -35,51 +30,49 @@ public class LeaderboardActivity extends AppCompatActivity {
     }
 
     /**
-     * ✅ Dengarkan perubahan data leaderboard secara realtime dari Firestore
+     * ✅ Mendengarkan data leaderboard secara realtime
      */
     private void listenLeaderboardRealtime() {
         db.collection("skor")
-                .orderBy("total", Query.Direction.DESCENDING) // Urutkan dari skor total tertinggi
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
-                        if (error != null) {
-                            showError("❌ Gagal mengambil leaderboard: " + error.getMessage());
-                            return;
-                        }
+                .orderBy("total", Query.Direction.DESCENDING)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        showError("❌ Gagal mengambil leaderboard: " + error.getMessage());
+                        return;
+                    }
+                    if (value == null || value.isEmpty()) {
+                        showError("⚠️ Belum ada data leaderboard");
+                        return;
+                    }
 
-                        if (value == null || value.isEmpty()) {
-                            showError("⚠️ Belum ada data leaderboard");
-                            return;
-                        }
+                    tableLeaderboard.removeAllViews();
 
-                        // 🔄 Hapus tabel lama sebelum update
-                        tableLeaderboard.removeAllViews();
+                    // ✅ Tambahkan Header (8 kolom)
+                    addHeaderRow("Rank", "Email", "Flappy", "Puzzle", "Tebak", "Mengingat", "Perhitungan", "Total");
 
-                        // 🟦 Tambahkan header
-                        addHeaderRow("Rank", "Email", "Flappy", "Puzzle", "Tebak", "Total");
+                    int rank = 1;
+                    for (QueryDocumentSnapshot doc : value) {
+                        String email = doc.getString("email");
+                        if (email == null) email = "-";
 
-                        int rank = 1;
-                        for (QueryDocumentSnapshot doc : value) {
-                            String email = doc.getString("email");
-                            if (email == null) email = "-";
+                        long flappy = doc.contains("skor_flappy") ? doc.getLong("skor_flappy") : 0;
+                        long puzzle = doc.contains("skor_puzzle") ? doc.getLong("skor_puzzle") : 0;
+                        long tebak  = doc.contains("skor_tebak") ? doc.getLong("skor_tebak") : 0;
+                        long mengingat = doc.contains("skor_mengingat") ? doc.getLong("skor_mengingat") : 0;
+                        long perhitungan = doc.contains("skor_Perhitungan") ? doc.getLong("skor_Perhitungan") : 0;
 
-                            long flappy = doc.contains("skor_flappy") ? doc.getLong("skor_flappy") : 0;
-                            long puzzle = doc.contains("skor_puzzle") ? doc.getLong("skor_puzzle") : 0;
-                            long tebak  = doc.contains("skor_tebak") ? doc.getLong("skor_tebak") : 0;
+                        long total = doc.contains("total") ? doc.getLong("total")
+                                : (flappy + puzzle + tebak + mengingat + perhitungan);
 
-                            // ✅ Ambil total dari Firestore jika ada, jika tidak hitung manual
-                            long total = doc.contains("total") ? doc.getLong("total") : (flappy + puzzle + tebak);
-
-                            addRow(rank, email, flappy, puzzle, tebak, total);
-                            rank++;
-                        }
+                        // ✅ Tambahkan row dengan semua skor
+                        addRow(rank, email, flappy, puzzle, tebak, mengingat, perhitungan, total);
+                        rank++;
                     }
                 });
     }
 
     /**
-     * ✅ Tampilkan pesan error di tabel leaderboard
+     * ✅ Menampilkan pesan error jika gagal load data
      */
     private void showError(String message) {
         tableLeaderboard.removeAllViews();
@@ -92,37 +85,37 @@ public class LeaderboardActivity extends AppCompatActivity {
     }
 
     /**
-     * ✅ Tambahkan baris header
+     * ✅ Tambahkan header tabel
      */
-    private void addHeaderRow(String rank, String email, String flappy, String puzzle, String tebak, String total) {
+    private void addHeaderRow(String rank, String email, String flappy, String puzzle, String tebak,
+                              String mengingat, String perhitungan, String total) {
         TableRow headerRow = new TableRow(this);
         headerRow.addView(createHeaderCell(rank));
         headerRow.addView(createHeaderCell(email));
         headerRow.addView(createHeaderCell(flappy));
         headerRow.addView(createHeaderCell(puzzle));
         headerRow.addView(createHeaderCell(tebak));
+        headerRow.addView(createHeaderCell(mengingat));
+        headerRow.addView(createHeaderCell(perhitungan));
         headerRow.addView(createHeaderCell(total));
         tableLeaderboard.addView(headerRow);
     }
 
     /**
-     * ✅ Tambahkan baris data user
+     * ✅ Tambahkan baris data pengguna
      */
-    private void addRow(int rank, String email, long flappy, long puzzle, long tebak, long total) {
+    private void addRow(int rank, String email, long flappy, long puzzle, long tebak,
+                        long mengingat, long perhitungan, long total) {
         TableRow row = new TableRow(this);
-
-        // 🔄 Warna selang-seling
-        if (rank % 2 == 0) {
-            row.setBackgroundColor(Color.parseColor("#F8F8F8"));
-        } else {
-            row.setBackgroundColor(Color.WHITE);
-        }
+        row.setBackgroundColor(rank % 2 == 0 ? Color.parseColor("#F8F8F8") : Color.WHITE);
 
         row.addView(createCell(String.valueOf(rank)));
         row.addView(createCell(email));
         row.addView(createCell(String.valueOf(flappy)));
         row.addView(createCell(String.valueOf(puzzle)));
         row.addView(createCell(String.valueOf(tebak)));
+        row.addView(createCell(String.valueOf(mengingat)));
+        row.addView(createCell(String.valueOf(perhitungan)));
         row.addView(createCell(String.valueOf(total)));
 
         tableLeaderboard.addView(row);

@@ -1,16 +1,20 @@
 package com.example.slidingpuzzlegame;
 
 import android.app.AlertDialog;
+import android.content.ContentValues;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.LinearLayout;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import java.util.Random;
 
 public class GamePerhitunganActivity extends AppCompatActivity {
@@ -24,6 +28,8 @@ public class GamePerhitunganActivity extends AppCompatActivity {
     private CountDownTimer timer;
     private int hasilBenar;
 
+    private ScoreDatabaseHelper dbHelper;
+
     private int[] gambarBuah = {
             R.drawable.buah1, R.drawable.buah10
     };
@@ -32,6 +38,9 @@ public class GamePerhitunganActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_perhitungan);
+
+        // Inisialisasi Database Helper
+        dbHelper = new ScoreDatabaseHelper(this);
 
         // Inisialisasi semua view
         scoreText = findViewById(R.id.scoreText);
@@ -57,7 +66,6 @@ public class GamePerhitunganActivity extends AppCompatActivity {
                     .setCancelable(false)
                     .create();
 
-            // Ambil tombol dari layout (LinearLayout)
             LinearLayout btnLanjut = popupView.findViewById(R.id.btnLanjut);
             LinearLayout btnUlang = popupView.findViewById(R.id.btnUlang);
             LinearLayout btnHome = popupView.findViewById(R.id.btnHome);
@@ -76,13 +84,13 @@ public class GamePerhitunganActivity extends AppCompatActivity {
             });
 
             btnHome.setOnClickListener(view -> {
+                simpanScoreKeDatabase(score); // simpan sebelum keluar
                 dialog.dismiss();
                 finish();
             });
 
             dialog.show();
         });
-
 
         startGame();
     }
@@ -103,6 +111,7 @@ public class GamePerhitunganActivity extends AppCompatActivity {
             public void onFinish() {
                 timerText.setText("Time: 0");
                 Toast.makeText(GamePerhitunganActivity.this, "Waktu Habis!", Toast.LENGTH_SHORT).show();
+                simpanScoreKeDatabase(score); // simpan skor saat waktu habis
                 finish();
             }
         }.start();
@@ -166,5 +175,16 @@ public class GamePerhitunganActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "Jawaban Salah!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // ✅ Simpan skor ke database
+    private void simpanScoreKeDatabase(int nilai) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("game_name", "Game Perhitungan");
+        values.put("score", nilai);
+        db.insert("scores", null, values);
+        db.close();
+        Toast.makeText(this, "Score tersimpan!", Toast.LENGTH_SHORT).show();
     }
 }

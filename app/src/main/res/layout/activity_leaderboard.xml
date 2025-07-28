@@ -1,29 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:padding="16dp">
 
-    <LinearLayout
+    <!-- ✅ Bungkus seluruh tabel dengan HorizontalScrollView agar bisa geser kiri-kanan -->
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:scrollbars="horizontal"
+        android:fillViewport="true">
 
-        <TextView
-            android:id="@+id/tvLeaderboardTitle"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Leaderboard"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="16dp" />
+            android:orientation="vertical">
 
-        <TableLayout
-            android:id="@+id/tableLeaderboard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:stretchColumns="1,2,3,4,5"
-            android:background="#EEEEEE" />
+            <!-- ✅ Judul Leaderboard -->
+            <TextView
+                android:id="@+id/tvLeaderboardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Leaderboard"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="16dp" />
 
-    </LinearLayout>
+            <!-- ✅ TableLayout dibungkus agar bisa scroll kiri-kanan -->
+            <TableLayout
+                android:id="@+id/tableLeaderboard"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:stretchColumns="1,2,3,4,5,6,7"
+                android:background="#EEEEEE" />
+
+        </LinearLayout>
+    </HorizontalScrollView>
 </ScrollView>

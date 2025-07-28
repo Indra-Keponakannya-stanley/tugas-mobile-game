@@ -8,15 +8,18 @@ import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.view.MotionEvent;
 import android.view.View;
-import java.util.ArrayList;
-import java.util.Random;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class FlappyBirdView extends View {
-    private DatabaseReference databaseRef;
-
     private int lastPipeX = 0;
     private long gameStartTime;
     private Random random = new Random();
@@ -220,8 +223,6 @@ public class FlappyBirdView extends View {
             Rect top = pipes.get(i);
             Rect bottom = pipes.get(i + 1);
 
-            if (top.width() == 0 && bottom.width() == 0) continue; // skip pipa kosong
-
             if (!isPaused && !gameOver && isGameStarted) {
                 top.offset(-pipeSpeed, 0);
                 bottom.offset(-pipeSpeed, 0);
@@ -314,13 +315,12 @@ public class FlappyBirdView extends View {
 
             prefs.edit().putInt("bestScore", bestScore).putLong("bestTime", bestTime).apply();
 
-            // ✅ SIMPAN SCORE KE DATABASE
-            saveScoreToDatabase("flappy1", score);
+            // ✅ Simpan skor ke Firestore
+            saveFlappyScoreToFirestore(score);
 
             showGameOverDialog(score, currentTime, bestScore, bestTime);
         }
     }
-
 
     private void showGameOverDialog(int score, long time, int bestScore, long bestTime) {
         new AlertDialog.Builder(getContext())
@@ -389,5 +389,36 @@ public class FlappyBirdView extends View {
             resumeGame();
             postInvalidate();
         }).start();
+    }
+
+    private void saveFlappyScoreToFirestore(int skor) {
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        FirebaseUser user = mAuth.getCurrentUser();
+
+        if (user != null) {
+            db.collection("skor")
+                    .whereEqualTo("email", user.getEmail())
+                    .get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
+                        if (!queryDocumentSnapshots.isEmpty()) {
+                            // Update skor_flappy di dokumen yang ada
+                            String docId = queryDocumentSnapshots.getDocuments().get(0).getId();
+                            db.collection("skor").document(docId)
+                                    .update("skor_flappy", skor)
+                                    .addOnSuccessListener(aVoid ->
+                                            Toast.makeText(getContext(), "Skor Flappy diperbarui!", Toast.LENGTH_SHORT).show());
+                        } else {
+                            // Jika user belum punya data skor, buat dokumen baru
+                            Map<String, Object> newData = new HashMap<>();
+                            newData.put("email", user.getEmail());
+                            newData.put("skor_flappy", skor);
+                            newData.put("skor_tebak", 0);
+                            newData.put("skor_puzzle", 0);
+                            newData.put("total", skor);
+                            db.collection("skor").add(newData);
+                        }
+                    });
+        }
     }
 }

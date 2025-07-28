@@ -269,17 +269,27 @@ public class TebakActivity extends AppCompatActivity {
     private void saveScoreToFirestore(int skor) {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("email", user.getEmail());
-            data.put("skor", skor);
-            data.put("waktu", System.currentTimeMillis());
-
             db.collection("skor")
-                    .add(data)
-                    .addOnSuccessListener(documentReference ->
-                            Toast.makeText(this, "Skor tersimpan di Firestore", Toast.LENGTH_SHORT).show())
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "Gagal simpan skor: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    .whereEqualTo("email", user.getEmail())
+                    .get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
+                        if (!queryDocumentSnapshots.isEmpty()) {
+                            String docId = queryDocumentSnapshots.getDocuments().get(0).getId();
+                            db.collection("skor").document(docId)
+                                    .update("skor_tebak", skor)
+                                    .addOnSuccessListener(aVoid ->
+                                            Toast.makeText(this, "Skor tebak diperbarui!", Toast.LENGTH_SHORT).show());
+                        } else {
+                            Map<String, Object> newData = new HashMap<>();
+                            newData.put("email", user.getEmail());
+                            newData.put("skor_tebak", skor);
+                            newData.put("skor_flappy", 0);
+                            newData.put("skor_puzzle", 0);
+                            newData.put("skor_game4", 0); // tambahkan nanti
+                            newData.put("skor_game5", 0); // tambahkan nanti
+                            newData.put("total", skor); // optional
+                            db.collection("skor").add(newData);
+                        }
+                    });
         }
-    }
-}
+    }}
